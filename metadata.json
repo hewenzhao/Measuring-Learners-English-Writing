@@ -1,0 +1,6 @@
+{
+  "name": "Corpus Analysis Tool",
+  "description": "Measuring Learners English Writing v2.0 (Otc, 2026) - Analyzes text for word count, sentence lengths, and word frequencies.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
