@@ -5,7 +5,7 @@ function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: 'Measuring Learners English Writing v2.0',
+    title: 'English Linguistic Feature Measuring Toolkit V2.1',
     icon: path.join(__dirname, 'dist', 'logo.png'),
     webPreferences: {
       nodeIntegration: true,

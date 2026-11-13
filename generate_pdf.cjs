@@ -13,7 +13,7 @@ function generatePdf() {
     margin: 50,
     size: 'A4',
     info: {
-      Title: 'Measuring Learners English Writing - User Guide',
+      Title: 'English Linguistic Feature Measuring Toolkit - User Guide',
       Author: 'Oscar Wenzhao He',
       Subject: 'User Guide and Methodology for English Learner Writing Analysis'
     }

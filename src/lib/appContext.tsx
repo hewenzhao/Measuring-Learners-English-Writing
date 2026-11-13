@@ -5,8 +5,11 @@ export interface SingleHandlers {
   exportCsv: () => void;
   clear: () => void;
   uploadFile: () => void;
+  loadDocument?: (doc: { fileName: string; content: string }) => void;
+  loadMultipleDocuments?: (docs: { fileName: string; content: string }[]) => void;
   hasDocument: boolean;
   fileName: string;
+  loadedCount?: number;
 }
 
 export interface BatchHandlers {
@@ -16,6 +19,7 @@ export interface BatchHandlers {
   exportWordlistCsv: () => void;
   clear: () => void;
   uploadFiles: () => void;
+  addFiles?: (files: { filename: string; content: string }[]) => void;
   itemsCount: number;
   analyzedCount: number;
 }

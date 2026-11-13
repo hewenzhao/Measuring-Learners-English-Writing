@@ -54,17 +54,17 @@ export function DesktopExeModal({ isOpen, onClose }: DesktopExeModalProps) {
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-lg font-bold">Windows EXE 桌面版编译与安装</h3>
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                  v2.0
+                  V2.1
                 </span>
                 <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/30">
-                  Otc, 2026
+                  Nov, 2026
                 </span>
                 <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   Electron Ready
                 </span>
               </div>
               <p className="text-xs text-blue-200/80 mt-0.5">
-                版本 v2.0 (Otc, 2026) • 离线运行 • 本地运算 • 支持 .docx / .txt 语料 • 批量统计与 CSV 导出
+                版本 V2.1 (Nov, 2026) • 离线运行 • 本地运算 • 支持 .docx / .txt 语料 • 批量统计与 CSV 导出
               </p>
             </div>
           </div>
@@ -176,10 +176,10 @@ export function DesktopExeModal({ isOpen, onClose }: DesktopExeModalProps) {
             </p>
             <ul className="text-xs text-amber-900/90 space-y-1 list-disc list-inside ml-1">
               <li>
-                <strong>便携免安装版：</strong> <code className="font-mono text-[11px]">release/win-unpacked/Measuring Learners English Writing.exe</code>（直接拷贝该目录即可在任何 Windows 电脑运行）
+                <strong>便携免安装版：</strong> <code className="font-mono text-[11px]">release/win-unpacked/English Linguistic Feature Measuring Toolkit.exe</code>（直接拷贝该目录即可在任何 Windows 电脑运行）
               </li>
               <li>
-                <strong>安装向导版：</strong> <code className="font-mono text-[11px]">release/Measuring Learners English Writing Setup 2.0.0.exe</code>（标准 Windows NSIS 安装包）
+                <strong>安装向导版：</strong> <code className="font-mono text-[11px]">release/English Linguistic Feature Measuring Toolkit Setup 2.1.0.exe</code>（标准 Windows NSIS 安装包）
               </li>
             </ul>
           </div>

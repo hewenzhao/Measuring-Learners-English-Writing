@@ -1,6 +1,6 @@
 @echo off
 echo ===================================================
-echo  Measuring Learners English Writing - EXE Packager
+echo  English Linguistic Feature Measuring Toolkit - EXE Packager
 echo ===================================================
 echo.
 echo [1/3] Checking Node.js environment...

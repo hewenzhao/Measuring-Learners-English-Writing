@@ -119,11 +119,11 @@ export function MenuBar() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-gray-800 group-hover:text-blue-900 flex items-center justify-between">
-                  <span>Upload Single Document</span>
-                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.2 rounded font-normal">.docx / .txt</span>
+                  <span>Upload Document(s)</span>
+                  <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.2 rounded font-normal">Single / Multiple</span>
                 </div>
                 <p className="text-[11px] text-gray-500 leading-tight mt-0.5">
-                  Analyze individual learner essay or text
+                  Select 1 or more .txt / .docx files to analyze
                 </p>
               </div>
             </button>
@@ -421,7 +421,7 @@ export function MenuBar() {
 
             <div className="border-t border-gray-100 my-1" />
             <div className="px-3.5 py-1.5 bg-gray-50/70 rounded-b-xl flex items-center justify-between text-[11px] text-gray-500">
-              <span className="font-semibold text-gray-700">v2.0 • Otc, 2026</span>
+              <span className="font-semibold text-gray-700">V2.1 • Nov, 2026</span>
               <span className="text-[10px] text-gray-400">Oscar Wenzhao He</span>
             </div>
 

@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "main": "main.cjs",
   "scripts": {
@@ -15,8 +15,8 @@
     "build:exe:dir": "npm run build && electron-builder --win --dir"
   },
   "build": {
-    "appId": "com.measuringlearnersenglishwriting.app",
-    "productName": "Measuring Learners English Writing",
+    "appId": "com.englishlinguisticfeaturemeasuringtoolkit.app",
+    "productName": "English Linguistic Feature Measuring Toolkit",
     "directories": {
       "output": "release"
     },

@@ -4,7 +4,7 @@ import { markTextWithWordlist } from '../lib/wordlist';
 import { useWordlist } from '../lib/wordlistContext';
 import { useApp } from '../lib/appContext';
 import { generateSingleTextCsv, downloadCsv } from '../lib/indicatorStatistics';
-import { extractTextFromFile } from '../lib/fileReader';
+import { extractTextFromFile, extractMultipleFiles } from '../lib/fileReader';
 import { 
   FileText, 
   Calculator, 
@@ -23,6 +23,9 @@ import {
   Sparkles,
   BarChart2,
   BookmarkCheck,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
   Download,
   Eye,
   Edit3,
@@ -41,15 +44,20 @@ import { StatCard } from './StatCard';
 import * as XLSX from 'xlsx';
 import { BRAND_LOGO_URL } from '../assets/brand';
 
-const SAMPLE_LEARNER_ESSAY = `In contemporary society, artificial intelligence has become an increasingly significant topic of discussion among educators and researchers worldwide. While some scholars argue that technological automation will replace traditional classroom teachers, others maintain that human mentorship remains indispensable for developing critical thinking and ethical reasoning.
-
-Furthermore, recent educational studies indicate that integrating intelligent tutoring systems can substantially enhance individualized student progress. For instance, learners who receive automated immediate feedback frequently demonstrate notable improvements in complex problem-solving tasks. However, over-reliance on digital tools might inadvertently diminish learners' intrinsic motivation and collaborative interpersonal skills.
-
-Therefore, it is crucial for educational policymakers to establish balanced curriculum guidelines that leverage computational technology while simultaneously preserving essential human pedagogical guidance. Consequently, students will be adequately equipped with analytical capabilities and interdisciplinary adaptability to thrive in a rapidly evolving global workforce.`;
+export interface LoadedDoc {
+  id: string;
+  fileName: string;
+  content: string;
+}
 
 export function SingleAnalyzer() {
-  const [text, setText] = useState('');
-  const [fileName, setFileName] = useState('');
+  const [loadedDocs, setLoadedDocs] = useState<LoadedDoc[]>([]);
+  const [activeDocIndex, setActiveDocIndex] = useState(0);
+
+  const currentDoc = loadedDocs[activeDocIndex];
+  const text = currentDoc ? currentDoc.content : '';
+  const fileName = currentDoc ? currentDoc.fileName : '';
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTargetOnly, setFilterTargetOnly] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -60,7 +68,14 @@ export function SingleAnalyzer() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { wordlist, setIsModalOpen } = useWordlist();
-  const { filterStopwords, toggleFilterStopwords, registerSingleHandlers } = useApp();
+  const { 
+    filterStopwords, 
+    toggleFilterStopwords, 
+    registerSingleHandlers, 
+    batchHandlers, 
+    setActiveTab, 
+    showNotification 
+  } = useApp();
 
   const stats = useMemo(
     () => analyzeText(text, { filterStopwords, targetWordlist: wordlist }), 
@@ -90,16 +105,57 @@ export function SingleAnalyzer() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const processFile = async (file: File) => {
+  const processFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
     setIsReadingFile(true);
     setFileError(null);
-    setFileName(file.name);
+
     try {
-      const content = await extractTextFromFile(file);
-      setText(content);
+      const results = await extractMultipleFiles(fileArray);
+      const newDocs: LoadedDoc[] = [];
+      const errors: string[] = [];
+
+      for (const res of results) {
+        if (res.error) {
+          errors.push(`${res.name} (${res.error})`);
+        } else if (!res.content.trim()) {
+          errors.push(`${res.name} (file was empty)`);
+        } else {
+          newDocs.push({
+            id: Math.random().toString(36).substring(7),
+            fileName: res.name,
+            content: res.content
+          });
+        }
+      }
+
+      if (errors.length > 0) {
+        setFileError(`Notice on file(s): ${errors.join(', ')}. Please verify .docx or .txt content.`);
+      }
+
+      if (newDocs.length > 0) {
+        setLoadedDocs(prev => {
+          const newIndex = prev.length;
+          setActiveDocIndex(newIndex);
+          return [...prev, ...newDocs];
+        });
+
+        // Automatically sync to batch queue so all files are ready in Batch Corpus Analysis
+        if (batchHandlers.addFiles) {
+          batchHandlers.addFiles(newDocs.map(d => ({ filename: d.fileName, content: d.content })));
+        }
+
+        if (newDocs.length > 1) {
+          showNotification(`Successfully loaded ${newDocs.length} text files!`);
+        } else {
+          showNotification(`Loaded ${newDocs[0].fileName}`);
+        }
+      }
     } catch (err) {
-      console.error('Failed to extract text from file:', err);
-      setFileError(`Could not read "${file.name}". Please ensure it is a valid .docx or .txt document.`);
+      console.error('Error reading files:', err);
+      setFileError('Could not process the uploaded files. Please ensure they are valid .docx or .txt files.');
     } finally {
       setIsReadingFile(false);
       if (fileInputRef.current) {
@@ -109,9 +165,9 @@ export function SingleAnalyzer() {
   };
 
   const handleFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    processFile(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    processFiles(files);
   };
 
   const handleDragOver = (e: DragEvent) => {
@@ -130,24 +186,35 @@ export function SingleAnalyzer() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      processFile(file);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      processFiles(files);
     }
-  };
-
-  const handleLoadSample = () => {
-    setText(SAMPLE_LEARNER_ESSAY);
-    setFileName('sample_learner_essay.docx');
-    setFileError(null);
   };
 
   const handleApplyManualPaste = () => {
     if (!manualPasteInput.trim()) return;
-    setText(manualPasteInput.trim());
-    setFileName('pasted_document.txt');
+    const newDoc: LoadedDoc = {
+      id: Math.random().toString(36).substring(7),
+      fileName: `Pasted_Document_${loadedDocs.length + 1}.txt`,
+      content: manualPasteInput.trim()
+    };
+    setLoadedDocs(prev => [...prev, newDoc]);
+    setActiveDocIndex(loadedDocs.length);
     setShowManualPaste(false);
     setManualPasteInput('');
+    showNotification('Pasted document loaded.');
+  };
+
+  const updateActiveDocContent = (newContent: string) => {
+    setLoadedDocs(prev => {
+      return prev.map((doc, idx) => {
+        if (idx === activeDocIndex) {
+          return { ...doc, content: newContent };
+        }
+        return doc;
+      });
+    });
   };
 
   const handleCopyText = async () => {
@@ -256,22 +323,41 @@ export function SingleAnalyzer() {
     downloadCsv(csvContent, `${baseName}_indicators.csv`);
   }, [text, fileName, stats]);
 
+  const loadDocument = useCallback((doc: { fileName: string; content: string }) => {
+    setLoadedDocs(prev => {
+      const idx = prev.findIndex(d => d.fileName === doc.fileName);
+      if (idx >= 0) {
+        setActiveDocIndex(idx);
+        return prev;
+      }
+      const newDoc: LoadedDoc = {
+        id: Math.random().toString(36).substring(7),
+        fileName: doc.fileName,
+        content: doc.content
+      };
+      setActiveDocIndex(prev.length);
+      return [...prev, newDoc];
+    });
+  }, []);
+
   useEffect(() => {
     registerSingleHandlers({
       exportExcel: exportReport,
       exportCsv: exportCsv,
       clear: () => {
-        setText('');
-        setFileName('');
+        setLoadedDocs([]);
+        setActiveDocIndex(0);
         setFileError(null);
       },
       uploadFile: () => {
         fileInputRef.current?.click();
       },
+      loadDocument,
       hasDocument: Boolean(text.trim()),
-      fileName: fileName
+      fileName: fileName,
+      loadedCount: loadedDocs.length
     });
-  }, [registerSingleHandlers, exportReport, exportCsv, text, fileName]);
+  }, [registerSingleHandlers, exportReport, exportCsv, text, fileName, loadDocument, loadedDocs.length]);
 
   const targetStats = stats.targetWordlistStats;
 
@@ -299,7 +385,7 @@ export function SingleAnalyzer() {
           <div className="mb-5 relative group">
             <img 
               src={BRAND_LOGO_URL} 
-              alt="Measuring Learners English Writing Logo" 
+              alt="English Linguistic Feature Measuring Toolkit Logo" 
               className="h-20 sm:h-24 w-20 sm:w-24 object-contain rounded-full shadow-md border-2 border-blue-100 bg-white p-1 hover:scale-105 transition-transform"
               onError={(e) => {
                 const img = e.currentTarget;
@@ -312,17 +398,17 @@ export function SingleAnalyzer() {
 
           <div className="flex items-center gap-2 mb-2 flex-wrap justify-center">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
-              Single Document Analysis
+              Single & Multi-Document Analysis
             </h2>
             <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-              v2.0
+              V2.1
             </span>
             <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-              Otc, 2026
+              Nov, 2026
             </span>
           </div>
           <p className="text-sm sm:text-base text-gray-600 max-w-xl mb-6 leading-relaxed">
-            Import a learner essay or writing sample in Microsoft Word (<strong className="font-semibold text-gray-800">.docx</strong>) or Plain Text (<strong className="font-semibold text-gray-800">.txt</strong>) format to measure lexical, syntactic, cohesion, and readability indicators.
+            Import one or multiple learner essays in Microsoft Word (<strong className="font-semibold text-gray-800">.docx</strong>) or Plain Text (<strong className="font-semibold text-gray-800">.txt</strong>) format to measure lexical, syntactic, cohesion, and readability indicators.
           </p>
 
           {/* File Error Notification */}
@@ -340,17 +426,18 @@ export function SingleAnalyzer() {
             </div>
           )}
 
-          {/* Primary Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md mb-8">
-            <label className="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm transition-all text-sm group">
+          {/* Primary Action Button - supports multiple file selection */}
+          <div className="flex items-center justify-center w-full max-w-md mb-8">
+            <label className="cursor-pointer inline-flex items-center justify-center gap-2 px-7 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm hover:shadow-md transition-all text-sm group">
               {isReadingFile ? (
                 <Loader2 className="h-4 w-4 animate-spin text-white" />
               ) : (
                 <Upload className="h-4 w-4 group-hover:-translate-y-0.5 transition-transform" />
               )}
-              <span>{isReadingFile ? 'Extracting text...' : 'Upload .docx / .txt Document'}</span>
+              <span>{isReadingFile ? 'Extracting documents...' : 'Upload .docx / .txt Document(s)'}</span>
               <input 
                 type="file" 
+                multiple
                 accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" 
                 className="sr-only" 
                 ref={fileInputRef}
@@ -358,25 +445,17 @@ export function SingleAnalyzer() {
                 disabled={isReadingFile}
               />
             </label>
-
-            <button
-              type="button"
-              onClick={handleLoadSample}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-xl shadow-2xs transition-colors text-sm cursor-pointer"
-              title="Try an authentic learner argumentative essay on AI and Education"
-            >
-              <Sparkles className="h-4 w-4 text-amber-500" />
-              <span>Try Sample Essay</span>
-            </button>
           </div>
 
           {/* Supported Format Pills */}
-          <div className="flex items-center justify-center gap-2 mb-8 text-xs text-gray-500 font-medium">
+          <div className="flex items-center justify-center gap-2 mb-8 text-xs text-gray-500 font-medium flex-wrap">
             <span className="px-2.5 py-1 bg-gray-100 rounded-md border border-gray-200">.docx (Word Document)</span>
             <span>•</span>
-            <span className="px-2.5 py-1 bg-gray-100 rounded-md border border-gray-200">.txt (Plain Text UTF-8)</span>
+            <span className="px-2.5 py-1 bg-gray-100 rounded-md border border-gray-200">.txt (Plain Text)</span>
             <span>•</span>
-            <span className="text-gray-400">Drag & drop supported</span>
+            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 font-semibold rounded-md border border-blue-200">Multiple Files Supported</span>
+            <span>•</span>
+            <span className="text-gray-400">Drag & drop multiple files</span>
           </div>
 
           {/* Capabilities Grid */}
@@ -459,6 +538,100 @@ export function SingleAnalyzer() {
 
   return (
     <div className="flex flex-col gap-5 h-[calc(100vh-8rem)]">
+      {/* Multi-Document Navigation Bar when > 1 files loaded */}
+      {loadedDocs.length > 1 && (
+        <div className="bg-gradient-to-r from-blue-50/95 via-indigo-50/80 to-blue-50/95 border border-blue-200 rounded-xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs shrink-0">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold shadow-2xs">
+              <Layers className="h-3.5 w-3.5" />
+              <span>Doc {activeDocIndex + 1} of {loadedDocs.length}</span>
+            </span>
+
+            {/* Prev Doc Button */}
+            <button
+              type="button"
+              disabled={activeDocIndex === 0}
+              onClick={() => setActiveDocIndex(prev => Math.max(0, prev - 1))}
+              className="px-2.5 py-1 rounded-lg bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-gray-700 border border-gray-200 shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Previous document"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Prev</span>
+            </button>
+
+            {/* Document Select Dropdown */}
+            <select
+              value={activeDocIndex}
+              onChange={(e) => setActiveDocIndex(Number(e.target.value))}
+              className="bg-white border border-blue-300 text-gray-900 text-xs rounded-lg px-2.5 py-1 font-semibold shadow-2xs hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer max-w-[220px] sm:max-w-[340px] truncate"
+            >
+              {loadedDocs.map((doc, idx) => (
+                <option key={doc.id} value={idx}>
+                  [{idx + 1}/{loadedDocs.length}] {doc.fileName}
+                </option>
+              ))}
+            </select>
+
+            {/* Next Doc Button */}
+            <button
+              type="button"
+              disabled={activeDocIndex >= loadedDocs.length - 1}
+              onClick={() => setActiveDocIndex(prev => Math.min(loadedDocs.length - 1, prev + 1))}
+              className="px-2.5 py-1 rounded-lg bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-gray-700 border border-gray-200 shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Next document"
+            >
+              <span>Next</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-blue-50 text-blue-700 border border-blue-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+              title="Upload and append more .docx or .txt documents"
+            >
+              <Upload className="h-3.5 w-3.5 text-blue-600" />
+              <span>+ Add Files</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (batchHandlers.addFiles) {
+                  batchHandlers.addFiles(loadedDocs.map(d => ({ filename: d.fileName, content: d.content })));
+                }
+                setActiveTab('batch');
+                showNotification(`Switched to Batch Corpus Analysis with all ${loadedDocs.length} documents.`);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+              title="Compare all loaded documents in Batch Corpus Analysis"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              <span>Compare All in Corpus ({loadedDocs.length}) ➔</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLoadedDocs(prev => {
+                  const next = prev.filter((_, i) => i !== activeDocIndex);
+                  if (activeDocIndex >= next.length) {
+                    setActiveDocIndex(Math.max(0, next.length - 1));
+                  }
+                  return next;
+                });
+              }}
+              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              title="Remove this document from loaded list"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Document Control Bar */}
       <div className="bg-white p-3.5 sm:p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3 flex-wrap">
@@ -471,6 +644,19 @@ export function SingleAnalyzer() {
               {fileName?.toLowerCase().endsWith('.docx') ? 'DOCX' : 'TXT'}
             </span>
           </div>
+
+          {/* Quick Add More Files button when only 1 doc is currently loaded */}
+          {loadedDocs.length === 1 && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-white hover:bg-blue-50 border border-blue-200 rounded-lg transition-colors cursor-pointer shadow-2xs"
+              title="Add more .txt or .docx documents"
+            >
+              <Upload className="h-3 w-3 text-blue-600" />
+              <span>+ Add More Files</span>
+            </button>
+          )}
 
           <div className="hidden lg:flex items-center gap-2 text-xs text-gray-500 font-medium">
             <span>{stats.totalWords.toLocaleString()} words</span>
@@ -515,9 +701,10 @@ export function SingleAnalyzer() {
             <span>Stopwords: {filterStopwords ? 'Filtered' : 'Included'}</span>
           </button>
 
-          {/* Hidden file input for File -> Upload menu and file drop */}
+          {/* Hidden file input supporting multiple file selection */}
           <input 
             type="file" 
+            multiple
             accept=".docx,.txt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" 
             className="sr-only" 
             ref={fileInputRef}
@@ -1280,7 +1467,7 @@ export function SingleAnalyzer() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setText(prependSentenceLengths(text))}
+                    onClick={() => updateActiveDocContent(prependSentenceLengths(text))}
                     className="px-2.5 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors cursor-pointer"
                     title="Prepend sentence word counts into the document text"
                   >

@@ -13,7 +13,8 @@ import {
   ChevronDown,
   Table as TableIcon,
   RefreshCw,
-  Loader2
+  Loader2,
+  Eye
 } from 'lucide-react';
 import { analyzeText, TextStats } from '../lib/analyzer';
 import { useWordlist } from '../lib/wordlistContext';
@@ -47,7 +48,14 @@ export function BatchAnalyzer() {
   
   const batchFileInputRef = useRef<HTMLInputElement>(null);
   const { wordlist, setIsModalOpen } = useWordlist();
-  const { filterStopwords, toggleFilterStopwords, registerBatchHandlers } = useApp();
+  const { 
+    filterStopwords, 
+    toggleFilterStopwords, 
+    registerBatchHandlers,
+    singleHandlers,
+    setActiveTab: setAppTab,
+    showNotification
+  } = useApp();
 
   const [isReadingFiles, setIsReadingFiles] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -62,12 +70,23 @@ export function BatchAnalyzer() {
     for (const file of fileList) {
       try {
         const content = await extractTextFromFile(file);
-        newItems.push({
-          id: Math.random().toString(36).substring(7),
-          filename: file.name,
-          content,
-          status: 'pending'
-        });
+        if (content.trim()) {
+          let stats: TextStats | undefined = undefined;
+          let status: 'pending' | 'analyzed' | 'error' = 'pending';
+          try {
+            stats = analyzeText(content, { filterStopwords, targetWordlist: wordlist });
+            status = 'analyzed';
+          } catch {
+            status = 'error';
+          }
+          newItems.push({
+            id: Math.random().toString(36).substring(7),
+            filename: file.name,
+            content,
+            stats,
+            status
+          });
+        }
       } catch (err) {
         console.error(`Failed to read file ${file.name}:`, err);
         newItems.push({
@@ -80,9 +99,42 @@ export function BatchAnalyzer() {
       }
     }
 
-    setItems(prev => [...prev, ...newItems]);
+    setItems(prev => {
+      const existingNames = new Set(prev.map(p => p.filename));
+      const toAdd = newItems.filter(b => !existingNames.has(b.filename));
+      return [...prev, ...toAdd];
+    });
     setIsReadingFiles(false);
-  }, []);
+    if (newItems.length > 0) {
+      showNotification(`Added ${newItems.length} file(s) to corpus analysis queue.`);
+    }
+  }, [filterStopwords, wordlist, showNotification]);
+
+  const addFiles = useCallback((newFiles: { filename: string; content: string }[]) => {
+    if (newFiles.length === 0) return;
+    const newBatchItems: BatchItem[] = newFiles.map(f => {
+      let stats: TextStats | undefined = undefined;
+      let status: 'pending' | 'analyzed' | 'error' = 'pending';
+      try {
+        stats = analyzeText(f.content, { filterStopwords, targetWordlist: wordlist });
+        status = 'analyzed';
+      } catch {
+        status = 'error';
+      }
+      return {
+        id: Math.random().toString(36).substring(7),
+        filename: f.filename,
+        content: f.content,
+        stats,
+        status
+      };
+    });
+    setItems(prev => {
+      const existingNames = new Set(prev.map(p => p.filename));
+      const toAdd = newBatchItems.filter(b => !existingNames.has(b.filename));
+      return [...prev, ...toAdd];
+    });
+  }, [filterStopwords, wordlist]);
 
   const handleFileUpload = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -304,6 +356,7 @@ export function BatchAnalyzer() {
       uploadFiles: () => {
         batchFileInputRef.current?.click();
       },
+      addFiles: addFiles,
       itemsCount: items.length,
       analyzedCount: analyzedCount
     });
@@ -314,6 +367,7 @@ export function BatchAnalyzer() {
     handleExportCorpusWithStatsCsv,
     handleExportWordlistCsv,
     clearAll,
+    addFiles,
     items.length,
     analyzedCount
   ]);
@@ -380,11 +434,23 @@ export function BatchAnalyzer() {
         </div>
         
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Add Files Button */}
+          <button
+            type="button"
+            onClick={() => batchFileInputRef.current?.click()}
+            disabled={isReadingFiles}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 font-semibold rounded-lg transition-colors cursor-pointer text-sm shadow-xs disabled:opacity-50"
+            title="Upload and append more .docx or .txt files to corpus"
+          >
+            <Upload className="h-4 w-4 text-blue-600" />
+            <span>+ Add Files</span>
+          </button>
+
           {/* Analyze Button */}
           <button
             onClick={analyzeAll}
             disabled={items.length === 0 || isAnalyzing}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-gray-900 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-gray-800 font-medium rounded-lg transition-colors cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-2 px-5 py-2 bg-gray-900 text-white disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-gray-800 font-medium rounded-lg transition-colors cursor-pointer shadow-xs text-sm"
             title="Analyze or Re-analyze corpus with active wordlist & stopword settings"
           >
             {isAnalyzing ? (
@@ -479,7 +545,7 @@ export function BatchAnalyzer() {
                 <div className="mb-4 relative">
                   <img 
                     src={BRAND_LOGO_URL} 
-                    alt="Measuring Learners English Writing Logo" 
+                    alt="English Linguistic Feature Measuring Toolkit Logo" 
                     className="h-16 w-16 object-contain rounded-full shadow-xs border border-blue-100 bg-white p-1"
                     onError={(e) => {
                       const img = e.currentTarget;
@@ -494,10 +560,10 @@ export function BatchAnalyzer() {
                     {isReadingFiles ? 'Importing files...' : 'Corpus Batch Queue Empty'}
                   </p>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                    v2.0
+                    V2.1
                   </span>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                    Otc, 2026
+                    Nov, 2026
                   </span>
                 </div>
                 <p className="text-sm text-gray-500 max-w-md">
@@ -535,7 +601,7 @@ export function BatchAnalyzer() {
                     <th className="px-3 py-3 font-semibold text-gray-600 text-right">Adv. Vocab %</th>
                     <th className="px-3 py-3 font-semibold text-gray-600 text-right">TTR %</th>
                     <th className="px-3 py-3 font-semibold text-gray-600 text-center">Status</th>
-                    <th className="px-3 py-3 w-14"></th>
+                    <th className="px-3 py-3 w-20 text-center font-semibold text-gray-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -594,13 +660,28 @@ export function BatchAnalyzer() {
                           {item.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500 mx-auto" title="Error" />}
                         </td>
                         <td className="px-3 py-3.5 text-center">
-                          <button 
-                            onClick={() => removeItem(item.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
-                            title="Remove file"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button 
+                              onClick={() => {
+                                if (singleHandlers.loadDocument) {
+                                  singleHandlers.loadDocument({ fileName: item.filename, content: item.content });
+                                }
+                                setAppTab('single');
+                                showNotification(`Inspecting "${item.filename}" in Single Document Analysis`);
+                              }}
+                              className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors p-1 rounded cursor-pointer"
+                              title="Inspect this document in Single Document view"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={() => removeItem(item.id)}
+                              className="text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors p-1 rounded cursor-pointer"
+                              title="Remove file"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       </motion.tr>
                     ))}

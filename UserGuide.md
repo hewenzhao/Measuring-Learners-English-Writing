@@ -1,4 +1,4 @@
-# Measuring Learners English Writing - User Guide
+# English Linguistic Feature Measuring Toolkit - User Guide
 
 A comprehensive linguistic diagnostic tool designed by Oscar Wenzhao He for measuring English learner writing, syntactic complexity, logical connectors, sentence length variation, lexical density, target wordlist marking, indicator statistics, and multi-format CSV / Excel data exports. Follow this guide to get the most out of your linguistic analysis.
 
@@ -13,7 +13,7 @@ This tool is meticulously crafted for professionals, researchers, teachers, and 
 
 ## When to Use This Tool
 
-"Measuring Learners English Writing" shines in scenarios where deep textual understanding, learner diagnostics, and statistical modeling are required:
+"English Linguistic Feature Measuring Toolkit" shines in scenarios where deep textual understanding, learner diagnostics, and statistical modeling are required:
 
 *   **Descriptive Statistics of Writing Indicators:** Compute rigorous descriptive statistics (Mean, Standard Deviation, Median, Min, Max, and Total Sum) across dozens of linguistic and syntactic indicators for a corpus of learner essays.
 *   **Direct CSV Data Export for Research:** Export publication-ready CSV datasets formatted for immediate import into statistical packages such as R, SPSS, Stata, JASP, Jamovi, or Microsoft Excel.
@@ -110,7 +110,7 @@ The software is engineered with a modular Electron 42 and Vite architecture, all
 *   **Compilation Commands:**
     1.  `npm install` - Install dependencies.
     2.  `npm run build:exe` - Builds production React bundle and creates standard Windows installer (`.exe`) in `/release/`.
-    3.  `npm run build:exe:dir` - Produces portable unpacked application directory (`release/win-unpacked/Measuring Learners English Writing.exe`).
+    3.  `npm run build:exe:dir` - Produces portable unpacked application directory (`release/win-unpacked/English Linguistic Feature Measuring Toolkit.exe`).
 *   **In-App Assistant:** Click **Windows EXE** in the top navigation bar to download the batch script and view step-by-step compilation guidance.
 
 ---

@@ -36,7 +36,7 @@ function MainApp() {
               <div className="relative shrink-0">
                 <img 
                   src={BRAND_LOGO_URL} 
-                  alt="Measuring Learners English Writing Logo" 
+                  alt="English Linguistic Feature Measuring Toolkit Logo" 
                   className="h-10 w-10 sm:h-11 sm:w-11 rounded-full object-contain shadow-sm border border-blue-200 ring-2 ring-blue-500/15 bg-white p-0.5"
                   onError={(e) => {
                     const img = e.currentTarget;
@@ -49,13 +49,13 @@ function MainApp() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-base sm:text-xl font-bold tracking-tight text-gray-900 leading-tight">
-                    Measuring Learners English Writing
+                    English Linguistic Feature Measuring Toolkit
                   </h1>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 shadow-2xs">
-                    v2.0
+                    V2.1
                   </span>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                    Otc, 2026
+                    Nov, 2026
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-500 font-medium tracking-wide mt-0.5">
@@ -143,13 +143,13 @@ function MainApp() {
                 }
               }}
             />
-            <span className="font-semibold text-gray-800">Measuring Learners English Writing</span>
+            <span className="font-semibold text-gray-800">English Linguistic Feature Measuring Toolkit</span>
             <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-bold rounded-full border border-blue-200">
-              v2.0
+              V2.1
             </span>
             <span className="text-gray-300">•</span>
             <span className="font-semibold text-gray-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/80">
-              Date: Otc, 2026
+              Date: Nov, 2026
             </span>
           </div>
           <div className="text-center sm:text-right text-gray-500">
